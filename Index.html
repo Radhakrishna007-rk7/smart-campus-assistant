@@ -1,28 +1,126 @@
 <!DOCTYPE html>
 <html lang="en">
 <head>
-    <meta charset="UTF-8">
-    <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>Document</title>
-    <link rel="stylesheet" href="style.css">
-    <style>
-        h2 {
-            color: rgb(21, 159, 186);
-            background-color: blue;
-        }
-        h3{
-            color: rgb(2, 21, 21);
-            background-color: chartreuse;
-        }
-    </style>
-
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0"/>
+  <title>Smart Campus Assistant - Web Frontend (HTML/JS)</title>
+  <style>
+    :root {
+      --bg: #0b1020;
+      --card: #141a2b;
+      --text: #e6e6f0;
+      --muted: #a9b0d6;
+      --primary: #6ea8fe;
+      --accent: #22d1ee;
+      --error: #ff6b6b;
+    }
+    * { box-sizing: border-box; }
+    html, body { height: 100%; margin: 0; font-family: Arial, sans-serif; background: radial-gradient(circle at 20% -10%, #1a2a6c 0%, transparent 40%), radial-gradient(circle at 80% 0%, #9b2fff20 0%, transparent 40%), var(--bg); color: var(--text); }
+    .container { max-width: 980px; margin: 40px auto; padding: 20px; }
+    .card { background: linear-gradient(180deg, rgba(20,26,43,0.95), rgba(20,26,43,0.75)); border: 1px solid #2a2f50; border-radius: 12px; padding: 20px; box-shadow: 0 10px 25px rgba(0,0,0,0.25); }
+    h1 { margin: 0 0 12px; font-size: 1.9rem; }
+    .subtitle { color: var(--muted); font-size: 0.95rem; margin-bottom: 16px; }
+    .layout { display: grid; grid-template-columns: 1fr 300px; gap: 16px; align-items: flex-start; }
+    @media (max-width: 900px) {
+      .layout { grid-template-columns: 1fr; }
+    }
+    .section { margin-bottom: 20px; }
+    .section h2 { font-size: 1.15rem; margin-bottom: 8px; color: #e8eaff; }
+    pre { background: #0a0f22; padding: 12px; border-radius: 8px; overflow: auto; border: 1px solid #2a2f50; }
+    code { font-family: monospace; color: #9fceff; }
+    .chat { border: 1px solid #2a2f50; height: 420px; display: flex; flex-direction: column; border-radius: 8px; overflow: hidden; background: #0b1120; }
+    .messages { flex: 1; padding: 12px; overflow-y: auto; display: flex; flex-direction: column; gap: 8px; }
+    .message { max-width: 70%; padding: 10px 12px; border-radius: 16px; }
+    .user { align-self: flex-end; background: #1e2a6a; color: #fff; }
+    .bot { align-self: flex-start; background: #223056; color: #e8f0ff; }
+    .inputRow { display: flex; gap: 8px; padding: 10px; border-top: 1px solid #2a2f50; background: #0b1020; }
+    input[type="text"] { flex: 1; padding: 12px 14px; border-radius: 8px; border: 1px solid #2a2f50; background: #0f1630; color: #fff; }
+    button { padding: 10px 14px; border-radius: 8px; border: none; background: var(--primary); color: white; cursor: pointer; }
+    button.secondary { background: #2a2f50; color: #e6e6f0; }
+    .apiBox { background: #0a1220; border: 1px solid #2a2f50; border-radius: 8px; padding: 12px; font-family: monospace; color: #9bd4ff; }
+  </style>
 </head>
 <body>
-    <---internal css--->
-    <h2>reshwanth</h2><br><br>
-    <h3>krishna krishna</h3><br><br>
-<-------external css----->
-    <h4>radhe radhe</h4>
-    <h5>pooja pooja</h5>
+  <div class="container">
+    <h1>Smart Campus Assistant — Frontend</h1>
+    <div class="subtitle">A lightweight HTML/JS frontend for a conversational campus assistant. Connect to the backend API at /api/query.</div>
+
+    <div class="layout">
+      <!-- Chat UI -->
+      <section class="card section" aria-label="Chat interface">
+        <h2>Chat</h2>
+        <div class="chat" id="chat">
+          <div class="messages" id="messages" aria-live="polite">
+            <div class="message bot">Hi! I am your smart campus assistant. How can I help you today?</div>
+          </div>
+          <div class="inputRow">
+            <input type="text" id="userInput" placeholder="Ask me about schedules, library, dining, facilities, or administration..." />
+            <button id="sendBtn">Send</button>
+          </div>
+        </div>
+      </section>
+
+      <!-- Quick reference / API sample -->
+      <section class="card section" aria-label="API sample & notes">
+        <h2>Developer Quick Reference</h2>
+        <p><strong>Endpoint:</strong> /api/query (POST)</p>
+        <p><strong>Payload:</strong></p>
+        <pre class="apiBox"><code>{
+  "text": "What are the class schedules for CS101 today?"
+}</code></pre>
+        <p><strong>Response:</strong></p>
+        <pre class="apiBox" id="sampleResponse"><code>{ /* response shown after a test */ }</code></pre>
+      </section>
+    </div>
+  </div>
+
+  <script>
+    // Simple client-side: send user input to backend and render response
+    const apiEndpoint = "/api/query"; // Adjust if deployed behind a reverse proxy
+    const messagesEl = document.getElementById("messages");
+    const inputEl = document.getElementById("userInput");
+    const sendBtn = document.getElementById("sendBtn");
+    const sampleRespEl = document.getElementById("sampleResponse");
+
+    function addMessage(text, role) {
+      const div = document.createElement("div");
+      div.className = "message " + (role === "user" ? "user" : "bot");
+      div.textContent = text;
+      messagesEl.appendChild(div);
+      messagesEl.scrollTop = messagesEl.scrollHeight;
+    }
+
+    async function sendQuery() {
+      const text = inputEl.value.trim();
+      if (!text) return;
+      addMessage(text, "user");
+      inputEl.value = "";
+      try {
+        const resp = await fetch(apiEndpoint, {
+          method: "POST",
+          headers: { "Content-Type": "application/json" },
+          body: JSON.stringify({ text })
+        });
+        if (!resp.ok) throw new Error("Network response was not OK");
+        const data = await resp.json();
+        const reply = data?.reply ?? "No response";
+        addMessage(reply, "bot");
+        // Optional: render actions or structured data
+        if (data?.actions) {
+          // Simple rendering
+          addMessage("Available actions: " + Object.keys(data.actions).join(", "), "bot");
+        }
+        sampleRespEl.textContent = JSON.stringify(data, null, 2);
+      } catch (e) {
+        addMessage("Sorry, I couldn't reach the backend. Please try again later.", "bot");
+        console.error(e);
+      }
+    }
+
+    sendBtn.addEventListener("click", sendQuery);
+    inputEl.addEventListener("keydown", (e) => {
+      if (e.key === "Enter") sendQuery();
+    });
+  </script>
 </body>
 </html>
